@@ -10,6 +10,7 @@ export default function Widget({ config }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [isCallActive, setIsCallActive] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
   const chatEndRef = useRef(null);
   
@@ -21,11 +22,13 @@ export default function Widget({ config }) {
     const vapi = vapiRef.current;
 
     vapi.on('call-start', () => {
+      setIsConnecting(false);
       setIsCallActive(true);
       setMessages([{ role: 'system', content: 'Call started. The agent will speak shortly.' }]);
     });
 
     vapi.on('call-end', () => {
+      setIsConnecting(false);
       setIsCallActive(false);
       setIsAgentSpeaking(false);
       setMessages(prev => [...prev, { role: 'system', content: 'Call ended.' }]);
@@ -45,6 +48,7 @@ export default function Widget({ config }) {
 
     vapi.on('error', (e) => {
       console.error('Vapi Error:', e);
+      setIsConnecting(false);
       setIsCallActive(false);
     });
 
@@ -59,9 +63,11 @@ export default function Widget({ config }) {
 
   const toggleCall = () => {
     const vapi = vapiRef.current;
-    if (isCallActive) {
+    if (isCallActive || isConnecting) {
       vapi.stop();
+      setIsConnecting(false);
     } else {
+      setIsConnecting(true);
       const companyName = config?.companyName || "our store";
       const productInfo = config?.productInfo || "our products and services";
       const agentName = config?.agentName || "Sarah";
@@ -121,9 +127,9 @@ Keep your responses VERY concise and conversational. Do not output large paragra
                 <Bot size={22} color="var(--accent)" />
                 {config?.agentName || "Sales Agent"}
               </div>
-              <div className="status-badge" style={{ borderColor: isCallActive ? 'rgba(0, 184, 148, 0.2)' : 'rgba(255, 118, 117, 0.2)', color: isCallActive ? 'var(--success)' : 'var(--error)', background: isCallActive ? 'rgba(0, 184, 148, 0.1)' : 'rgba(255, 118, 117, 0.1)' }}>
-                <div className="status-dot" style={{ backgroundColor: isCallActive ? 'var(--success)' : 'var(--error)', boxShadow: isCallActive ? '0 0 8px var(--success)' : '0 0 8px var(--error)', animation: isCallActive ? 'pulse 2s infinite' : 'none' }}></div>
-                {isCallActive ? 'Live Call Active' : 'System Offline'}
+              <div className="status-badge" style={{ borderColor: isCallActive ? 'rgba(0, 184, 148, 0.2)' : isConnecting ? 'rgba(253, 203, 110, 0.2)' : 'rgba(255, 118, 117, 0.2)', color: isCallActive ? 'var(--success)' : isConnecting ? '#fdcb6e' : 'var(--error)', background: isCallActive ? 'rgba(0, 184, 148, 0.1)' : isConnecting ? 'rgba(253, 203, 110, 0.1)' : 'rgba(255, 118, 117, 0.1)' }}>
+                <div className="status-dot" style={{ backgroundColor: isCallActive ? 'var(--success)' : isConnecting ? '#fdcb6e' : 'var(--error)', boxShadow: isCallActive ? '0 0 8px var(--success)' : isConnecting ? '0 0 8px #fdcb6e' : '0 0 8px var(--error)', animation: isCallActive || isConnecting ? 'pulse 2s infinite' : 'none' }}></div>
+                {isCallActive ? 'Live Call Active' : isConnecting ? 'Connecting...' : 'System Offline'}
               </div>
             </div>
 
@@ -184,11 +190,13 @@ Keep your responses VERY concise and conversational. Do not output large paragra
 
             <div className="widget-footer">
               <button 
-                className={`call-btn ${isCallActive ? 'end' : 'start'}`}
+                className={`call-btn ${isCallActive ? 'end' : isConnecting ? 'connecting' : 'start'}`}
                 onClick={toggleCall}
+                disabled={isConnecting}
+                style={{ opacity: isConnecting ? 0.7 : 1, cursor: isConnecting ? 'not-allowed' : 'pointer' }}
               >
                 {isCallActive ? <PhoneOff size={20} /> : <PhoneCall size={20} />}
-                {isCallActive ? 'End Call' : 'Start Voice Call'}
+                {isCallActive ? 'End Call' : isConnecting ? 'Connecting...' : 'Start Voice Call'}
               </button>
             </div>
           </motion.div>

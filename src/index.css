@@ -68,6 +68,7 @@ body {
 
 .dashboard-content {
   display: flex;
+  flex-direction: row;
   gap: 40px;
   position: relative;
 }
@@ -282,6 +283,11 @@ body {
   flex-direction: column;
   align-items: flex-end;
   gap: 16px;
+  pointer-events: none; /* Let clicks pass through container */
+}
+
+.widget-container > * {
+  pointer-events: auto; /* Re-enable clicks for children */
 }
 
 .fab-button {
@@ -467,6 +473,12 @@ body {
   transform: translateY(-2px);
 }
 
+.call-btn.connecting {
+  background: #fdcb6e;
+  box-shadow: 0 4px 15px rgba(253, 203, 110, 0.3);
+  color: #000;
+}
+
 .call-btn.end {
   background: var(--error);
   box-shadow: 0 4px 15px rgba(255, 118, 117, 0.3);
@@ -489,16 +501,59 @@ body {
   border-radius: 2px;
 }
 
+@media (max-width: 860px) {
+  .dashboard-content {
+    flex-direction: column;
+  }
+  
+  .sticky-preview {
+    position: relative;
+    top: 0;
+    padding: 24px;
+  }
+  
+  .dashboard-header h1 {
+    font-size: 2.2rem;
+  }
+}
+
 @media (max-width: 480px) {
+  .dashboard-container {
+    padding: 20px 16px;
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .widget-container {
+    bottom: 16px;
+    right: 16px;
+  }
+  
   .widget-window {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
     max-height: none;
     border-radius: 0;
+    z-index: 999990;
+    transform-origin: bottom right;
+  }
+
+  .fab-button {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    z-index: 999999;
+  }
+  
+  .widget-body {
+    padding-bottom: 80px; /* Add padding so fab doesn't cover messages */
   }
 }
