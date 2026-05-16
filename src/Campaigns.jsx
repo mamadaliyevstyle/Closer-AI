@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Upload, Users, Play, CheckCircle2, AlertCircle, Phone, FileSpreadsheet, Plus, X } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, Users, Play, CheckCircle2, AlertCircle, Phone, FileSpreadsheet, Plus, X, Settings } from 'lucide-react';
 import Papa from 'papaparse';
 
 export default function Campaigns() {
@@ -13,6 +13,26 @@ export default function Campaigns() {
   const [isAddingManual, setIsAddingManual] = useState(false);
   const [manualContact, setManualContact] = useState({ Name: '', Phone: '', Email: '' });
 
+  // Vapi Settings State
+  const [showSettings, setShowSettings] = useState(false);
+  const [vapiConfig, setVapiConfig] = useState({
+    privateKey: '',
+    phoneNumberId: '',
+    assistantId: ''
+  });
+
+  useEffect(() => {
+    const savedConfig = localStorage.getItem('vapiOutboundConfig');
+    if (savedConfig) {
+      setVapiConfig(JSON.parse(savedConfig));
+    }
+  }, []);
+
+  const saveConfig = () => {
+    localStorage.setItem('vapiOutboundConfig', JSON.stringify(vapiConfig));
+    setShowSettings(false);
+  };
+
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -20,7 +40,6 @@ export default function Campaigns() {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
-          // If we already have contacts, append. Otherwise, set.
           const newData = results.data;
           setContacts(prev => [...prev, ...newData]);
           
@@ -38,18 +57,58 @@ export default function Campaigns() {
   };
 
   const startCampaign = async () => {
+    if (!vapiConfig.privateKey || !vapiConfig.phoneNumberId || !vapiConfig.assistantId) {
+      alert("Please configure your Vapi API Settings first!");
+      setShowSettings(true);
+      return;
+    }
+
     setIsCalling(true);
     
-    // Simulate dialing each contact one by one
     for (let i = 0; i < contacts.length; i++) {
-      if (callStatus[i] === 'completed') continue; // Skip already called
+      if (callStatus[i] === 'completed') continue;
+
+      const contact = contacts[i];
+      // Try to find the phone number column
+      const phoneKey = Object.keys(contact).find(k => k.toLowerCase().includes('phone') || k.toLowerCase().includes('number'));
+      const phoneNumber = contact[phoneKey];
+
+      if (!phoneNumber) {
+        setCallStatus(prev => ({ ...prev, [i]: 'failed' }));
+        continue;
+      }
 
       setCallStatus(prev => ({ ...prev, [i]: 'calling' }));
       
-      // Simulate API call to Vapi Outbound (POST /call/phone)
-      await new Promise(resolve => setTimeout(resolve, 2000)); 
-      
-      setCallStatus(prev => ({ ...prev, [i]: 'completed' }));
+      try {
+        const response = await fetch('https://api.vapi.ai/call/phone', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${vapiConfig.privateKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            phoneNumberId: vapiConfig.phoneNumberId,
+            assistantId: vapiConfig.assistantId,
+            customer: {
+              number: phoneNumber,
+              name: contact.Name || contact.name || 'Customer'
+            }
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Call failed to initiate');
+        }
+
+        setCallStatus(prev => ({ ...prev, [i]: 'completed' }));
+        
+        // Wait 2 seconds before dialing the next person to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 2000)); 
+      } catch (error) {
+        console.error("Vapi Error:", error);
+        setCallStatus(prev => ({ ...prev, [i]: 'failed' }));
+      }
     }
 
     setIsCalling(false);
@@ -62,25 +121,77 @@ export default function Campaigns() {
     setContacts([...contacts, manualContact]);
     setCallStatus(prev => ({ ...prev, [newIndex]: 'pending' }));
     
-    // Reset form
     setManualContact({ Name: '', Phone: '', Email: '' });
     setIsAddingManual(false);
   };
 
-  // Dynamically get headers. Default to Name, Phone, Email if empty.
   const headers = contacts.length > 0 
     ? Object.keys(contacts[0]) 
     : ['Name', 'Phone', 'Email'];
 
   return (
     <div className="campaigns-container">
-      <div className="dashboard-header">
+      <div className="dashboard-header" style={{ position: 'relative' }}>
+        <button 
+          className="secondary-btn icon-only" 
+          style={{ position: 'absolute', right: 0, top: 0 }}
+          onClick={() => setShowSettings(true)}
+          title="API Settings"
+        >
+          <Settings size={20} />
+        </button>
         <div className="header-logo">
           <Phone size={32} color="var(--accent)" />
           <h1>Auto <span className="subtitle">Dialer</span></h1>
         </div>
         <p className="header-desc">Upload a CSV list of contacts, or add them manually. Your AI Agent will automatically call them to pitch your product and book meetings.</p>
       </div>
+
+      {showSettings && (
+        <div className="settings-modal" style={modalOverlayStyle}>
+          <div className="settings-content" style={modalContentStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0 }}>Vapi API Settings</h3>
+              <button className="icon-only" onClick={() => setShowSettings(false)} style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '20px' }}>
+              To make real phone calls, you must provide your Vapi Private API Key, the Phone Number ID to dial from, and your Assistant ID.
+            </p>
+            <div className="input-group" style={{ marginBottom: '16px' }}>
+              <input 
+                type="password" 
+                placeholder="Vapi Private API Key" 
+                value={vapiConfig.privateKey}
+                onChange={e => setVapiConfig({...vapiConfig, privateKey: e.target.value})}
+                style={{ width: '100%', paddingLeft: '16px' }}
+              />
+            </div>
+            <div className="input-group" style={{ marginBottom: '16px' }}>
+              <input 
+                type="text" 
+                placeholder="Vapi Phone Number ID" 
+                value={vapiConfig.phoneNumberId}
+                onChange={e => setVapiConfig({...vapiConfig, phoneNumberId: e.target.value})}
+                style={{ width: '100%', paddingLeft: '16px' }}
+              />
+            </div>
+            <div className="input-group" style={{ marginBottom: '24px' }}>
+              <input 
+                type="text" 
+                placeholder="Vapi Assistant ID" 
+                value={vapiConfig.assistantId}
+                onChange={e => setVapiConfig({...vapiConfig, assistantId: e.target.value})}
+                style={{ width: '100%', paddingLeft: '16px' }}
+              />
+            </div>
+            <button className="primary-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={saveConfig}>
+              Save Settings
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="campaign-content">
         <div className="campaign-panel">
@@ -203,3 +314,23 @@ export default function Campaigns() {
     </div>
   );
 }
+
+const modalOverlayStyle = {
+  position: 'fixed',
+  top: 0, left: 0, right: 0, bottom: 0,
+  backgroundColor: 'rgba(0,0,0,0.7)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 9999
+};
+
+const modalContentStyle = {
+  background: 'var(--bg-panel)',
+  padding: '30px',
+  borderRadius: '16px',
+  width: '100%',
+  maxWidth: '400px',
+  border: '1px solid var(--border)',
+  boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+};
