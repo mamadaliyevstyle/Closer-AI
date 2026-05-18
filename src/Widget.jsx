@@ -71,6 +71,8 @@ export default function Widget({ config }) {
       const companyName = config?.companyName || "our store";
       const productInfo = config?.productInfo || "our products and services";
       const agentName = config?.agentName || "Sarah";
+      const language = config?.language || "English";
+      const voiceId = config?.voiceId || "pNInz6obpgDQGcFmaJgB";
 
       vapi.start({
         name: "Closer AI Widget",
@@ -83,6 +85,7 @@ export default function Widget({ config }) {
               role: "system",
               content: `You are an expert, highly trained Sales Specialist named ${agentName}. You represent ${companyName}.
 You are speaking directly with a customer who is interested in ${productInfo}.
+You MUST speak exclusively in ${language}.
 
 === YOUR CORE GOAL ===
 Your objective is to guide the prospect through a natural conversation to understand their problems, show how ${companyName} solves them, and help them commit to the next step.
@@ -105,7 +108,7 @@ Keep your responses VERY concise and conversational. Do not output large paragra
         },
         voice: {
           provider: "11labs",
-          voiceId: "pNInz6obpgDQGcFmaJgB"
+          voiceId: voiceId
         }
       });
     }

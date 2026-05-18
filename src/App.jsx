@@ -3,6 +3,9 @@ import { Copy, CheckCircle2, UserCircle, Briefcase, Tag, HelpCircle, Sparkles, L
 import Widget from './Widget';
 import Campaigns from './Campaigns';
 
+import Integrations from './Integrations';
+import { Globe, Mic } from 'lucide-react';
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('setup');
   
@@ -10,16 +13,20 @@ export default function App() {
   const [companyName, setCompanyName] = useState('Closer AI');
   const [productInfo, setProductInfo] = useState('high-end AI solutions');
   const [agentName, setAgentName] = useState('Sarah');
+  const [language, setLanguage] = useState('English');
+  const [voiceId, setVoiceId] = useState('pNInz6obpgDQGcFmaJgB');
   const [copied, setCopied] = useState(false);
 
-  const config = { companyName, productInfo, agentName };
+  const config = { companyName, productInfo, agentName, language, voiceId };
 
   const embedCode = `<!-- Closer AI Widget -->
 <script>
   window.CloserAIConfig = {
     companyName: "${companyName}",
     productInfo: "${productInfo}",
-    agentName: "${agentName}"
+    agentName: "${agentName}",
+    language: "${language}",
+    voiceId: "${voiceId}"
   };
 </script>
 <link rel="stylesheet" href="https://your-domain.com/assets/widget.css">
@@ -53,6 +60,13 @@ export default function App() {
           >
             <PhoneCall size={20} />
             Outbound Calling
+          </button>
+          <button 
+            className={`nav-btn ${activeTab === 'integrations' ? 'active' : ''}`}
+            onClick={() => setActiveTab('integrations')}
+          >
+            <Globe size={20} />
+            Integrations
           </button>
         </div>
       </nav>
@@ -126,10 +140,63 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Step 4 */}
+                {/* Step 4: Language */}
+                <div className="step-card">
+                  <div className="step-header">
+                    <div className="step-number">4</div>
+                    <h3>Agent Language</h3>
+                  </div>
+                  <p className="step-instruction">Select the primary language your AI should speak.</p>
+                  <div className="input-group">
+                    <Globe className="input-icon" size={20} />
+                    <select 
+                      className="custom-select"
+                      value={language} 
+                      onChange={e => setLanguage(e.target.value)}
+                    >
+                      <option value="English">English</option>
+                      <option value="Spanish">Spanish</option>
+                      <option value="French">French</option>
+                      <option value="German">German</option>
+                      <option value="Italian">Italian</option>
+                      <option value="Portuguese">Portuguese</option>
+                      <option value="Russian">Russian</option>
+                      <option value="Chinese">Chinese (Mandarin)</option>
+                      <option value="Japanese">Japanese</option>
+                      <option value="Korean">Korean</option>
+                      <option value="Arabic">Arabic</option>
+                      <option value="Hindi">Hindi</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Step 5: Voice Selection */}
+                <div className="step-card">
+                  <div className="step-header">
+                    <div className="step-number">5</div>
+                    <h3>Agent Voice</h3>
+                  </div>
+                  <p className="step-instruction">Choose how your AI sounds.</p>
+                  <div className="input-group">
+                    <Mic className="input-icon" size={20} />
+                    <select 
+                      className="custom-select"
+                      value={voiceId} 
+                      onChange={e => setVoiceId(e.target.value)}
+                    >
+                      <option value="pNInz6obpgDQGcFmaJgB">Rachel (Calm & Professional)</option>
+                      <option value="21m00Tcm4TlvDq8ikWAM">Drew (Energetic & Friendly)</option>
+                      <option value="29vD33N1CtxCmqQRPOHJ">Clyde (Deep & Authoritative)</option>
+                      <option value="2EiwWnXFnvU5JabPnv8n">Mimi (Soft & Reassuring)</option>
+                      <option value="zrHiDhphv9ZnVXBqCLjz">Fin (Warm & Articulate)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Step 6 */}
                 <div className="step-card highlight-card">
                   <div className="step-header">
-                    <div className="step-number success">4</div>
+                    <div className="step-number success">6</div>
                     <h3>Install on your Website</h3>
                   </div>
                   <p className="step-instruction">You are all set! Just click the button below to copy your unique code. Paste this code directly into your website (like Shopify, WordPress, or Webflow).</p>
@@ -168,7 +235,7 @@ export default function App() {
                     </div>
                     <div className="feature-item">
                       <CheckCircle2 size={16} color="var(--success)" />
-                      <span>Trained to sell your product</span>
+                      <span>Speaks <strong>{language}</strong></span>
                     </div>
                   </div>
                 </div>
@@ -176,8 +243,10 @@ export default function App() {
             </div>
             <Widget config={config} />
           </div>
-        ) : (
+        ) : activeTab === 'campaigns' ? (
           <Campaigns />
+        ) : (
+          <Integrations />
         )}
       </main>
     </div>
