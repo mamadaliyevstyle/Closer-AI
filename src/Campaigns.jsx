@@ -71,17 +71,26 @@ export default function Campaigns() {
       const contact = contacts[i];
       // Try to find the phone number column
       const phoneKey = Object.keys(contact).find(k => k.toLowerCase().includes('phone') || k.toLowerCase().includes('number'));
-      const phoneNumber = contact[phoneKey];
+      let phoneNumber = contact[phoneKey];
 
       if (!phoneNumber) {
         setCallStatus(prev => ({ ...prev, [i]: 'failed' }));
         continue;
       }
 
+      // Ensure phone number is in E.164 format (starts with +)
+      phoneNumber = String(phoneNumber).trim();
+      if (!phoneNumber.startsWith('+')) {
+        // Strip non-digits and prepend + (Assuming it has a country code, or it might need one)
+        // If they enter 1234567890, this becomes +1234567890 if we prepend +1, but let's just prepend + for now
+        // and remove all other non-numeric characters like spaces or dashes.
+        phoneNumber = '+' + phoneNumber.replace(/\D/g, '');
+      }
+
       setCallStatus(prev => ({ ...prev, [i]: 'calling' }));
       
       try {
-        const response = await fetch('https://api.vapi.ai/call/phone', {
+        const response = await fetch('https://api.vapi.ai/call', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${vapiConfig.privateKey}`,
@@ -98,7 +107,9 @@ export default function Campaigns() {
         });
 
         if (!response.ok) {
-          throw new Error('Call failed to initiate');
+          const errorData = await response.text();
+          console.error("Vapi Error Payload:", errorData);
+          throw new Error('Call failed to initiate: ' + errorData);
         }
 
         setCallStatus(prev => ({ ...prev, [i]: 'completed' }));
